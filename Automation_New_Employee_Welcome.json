@@ -1,0 +1,961 @@
+{
+  "name": "Automation_New_Employee_Welcome",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg",
+          "mode": "list",
+          "cachedResultName": "Employee Onboarding Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1722841841,
+          "mode": "list",
+          "cachedResultName": "Form Responses 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg/edit#gid=1722841841"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "id": "08bf20b5-63f9-4c87-93b1-ba048cf58571",
+      "name": "New Employee Added (Google Sheets Trigger)",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        144
+      ],
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "ECzNdslePukhfrk8",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Normalize keys by stripping invisible characters and whitespace\nconst rawItem = $input.item.json;\nconst item = {};\nfor (const key in rawItem) {\n  const cleanKey = key.replace(/[\\u200B-\\u200D\\uFEFF\\u00A0]/g, '').trim();\n  item[cleanKey] = rawItem[key];\n}\n\nconst errors = [];\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n\nif (!item.Name || item.Name.trim() === '') errors.push('Name is missing');\nif (!item.Email || !emailRegex.test(item.Email)) errors.push('Employee email is missing or invalid');\nif (!item.Department || item.Department.trim() === '') errors.push('Department is missing');\nif (!item['Start Date'] || item['Start Date'].trim() === '') errors.push('Start date is missing');\n\nreturn {\n  json: {\n    employeeName: item.Name,\n    employeeEmail: item.Email,\n    department: item.Department,\n    startDate: item['Start Date'],\n    rowNumber: item.row_number,\n    isValid: errors.length === 0,\n    validationErrors: errors.join('; ')\n  }\n};"
+      },
+      "id": "c83339f2-eda5-4a95-b35f-9c38d2da31fb",
+      "name": "Validate Employee Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.isValid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "29882df3-0795-4c9a-8eff-b5c2fcc5d2af",
+      "name": "Is Data Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "=abdulwahab484512@gmail.com",
+        "subject": "=Action Required: Invalid Employee Data - Row {{ $json.rowNumber }}",
+        "message": "=<div style=\"font-family: Arial, sans-serif; color: #333333; max-width: 600px; margin: 0 auto; padding: 20px;\">\n  <div style=\"border-bottom: 2px solid #c0392b; padding-bottom: 15px; margin-bottom: 20px;\">\n    <h2 style=\"color: #2c3e50; margin: 0;\">DeepVision.ai</h2>\n    <p style=\"color: #c0392b; margin: 5px 0 0 0; font-weight: bold;\">Onboarding Alert</p>\n  </div>\n\n  <p>Hi HR Team,</p>\n\n  <p>A new employee entry was added to the onboarding sheet, but it could not be processed due to missing or invalid data.</p>\n\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #e0e0e0; font-weight: bold; width: 140px;\">Row Number</td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #e0e0e0;\">{{ $json.rowNumber }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #e0e0e0; font-weight: bold;\">Employee Name</td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #e0e0e0;\">{{ $json.employeeName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #e0e0e0; font-weight: bold;\">Issue Details</td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #e0e0e0;\">{{ $json.validationErrors }}</td>\n    </tr>\n  </table>\n\n  <p>Please correct the relevant fields directly in the Google Sheet. Note that this row will not be automatically reprocessed — you may need to add it again as a new row once corrected.</p>\n\n  <p style=\"margin-top: 30px;\">\n    Best regards,<br>\n    <strong>DeepVision.ai HR Automation</strong>\n  </p>\n\n  <div style=\"border-top: 1px solid #e0e0e0; margin-top: 30px; padding-top: 15px; font-size: 12px; color: #888888;\">\n    <p>DeepVision.ai — Powering Tomorrow with Intelligence</p>\n  </div>\n</div>",
+        "options": {}
+      },
+      "id": "30202152-afbd-4f33-bdab-be5ad9e6470a",
+      "name": "Alert HR - Invalid Data",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        224,
+        304
+      ],
+      "webhookId": "b5cc1dc5-f7bb-45a6-9350-1d59f42b2b4c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "vpnvculwx3rVOpPs",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg",
+          "mode": "list",
+          "cachedResultName": "Employee Onboarding Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email": "={{ $('Validate Employee Data').item.json.employeeEmail }}",
+            "Status": "Invalid - Needs Correction"
+          },
+          "matchingColumns": [
+            "Email"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Department",
+              "displayName": "Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ManagerEmail",
+              "displayName": "ManagerEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "LeadEmail",
+              "displayName": "LeadEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "StartDate",
+              "displayName": "StartDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ProcessedAt",
+              "displayName": "ProcessedAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "397834f2-8ff5-4aa2-b41d-c012efa760d6",
+      "name": "Mark Row as Invalid",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        448,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "5FozDjaGmUDBSEwW",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "copy",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "150Z5VAUnO1XHSZL9boIWxRSjY6DCbl-nMuXACHFRYCI"
+        },
+        "options": {}
+      },
+      "id": "9123cd2d-8520-4bc0-959d-34afdc733543",
+      "name": "Copy Onboarding Doc",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        224,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "1QgXrGj8muvR3GgC",
+          "name": "Google Drive account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "share",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.id }}"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "writer",
+            "type": "user",
+            "emailAddress": "={{ $('Validate Employee Data').item.json.employeeEmail }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "792d9c20-cbda-4fd3-98ac-22a27c779d8f",
+      "name": "Share Doc with Employee",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        448,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "1QgXrGj8muvR3GgC",
+          "name": "Google Drive account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "share",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Copy Onboarding Doc').item.json.id }}"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "user",
+            "emailAddress": "={{ $('Lookup Manager and Lead').item.json.ManagerEmail }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "3c888ca2-0d09-455f-b52d-c8287d5162b3",
+      "name": "Share Doc with Manager",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        672,
+        16
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "1QgXrGj8muvR3GgC",
+          "name": "Google Drive account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Validate Employee Data').item.json.employeeEmail }}",
+        "subject": "=Welcome to DeepVision.ai, {{ $('Validate Employee Data').item.json.employeeName }}!",
+        "message": "=<div style=\"font-family: Arial, sans-serif; color: #333333; max-width: 600px; margin: 0 auto; padding: 20px;\">\n  <div style=\"border-bottom: 2px solid #2c3e50; padding-bottom: 15px; margin-bottom: 20px;\">\n    <h2 style=\"color: #2c3e50; margin: 0;\">DeepVision.ai</h2>\n  </div>\n\n  <p>Dear {{ $('Validate Employee Data').item.json.employeeName }},</p>\n\n  <p>Welcome to DeepVision.ai. We are pleased to have you join our {{ $('Validate Employee Data').item.json.department }} team, effective {{ $('Validate Employee Data').item.json.startDate }}.</p>\n\n  <p>Your onboarding document has been shared with you via Google Drive. It contains important information to help you get started, including your first-day checklist and company policies. Please take a moment to review it before your start date.</p>\n\n  <p>Should you have any questions before joining, please do not hesitate to reach out to your manager or the HR team.</p>\n\n  <p>We look forward to working with you.</p>\n\n  <p style=\"margin-top: 30px;\">\n    Best regards,<br>\n    <strong>DeepVision.ai HR Team</strong>\n  </p>\n\n  <div style=\"border-top: 1px solid #e0e0e0; margin-top: 30px; padding-top: 15px; font-size: 12px; color: #888888;\">\n    <p>DeepVision.ai — Powering Tomorrow with Intelligence</p>\n  </div>\n</div>",
+        "options": {}
+      },
+      "id": "6e335f54-eeaf-4547-8cfe-58a4a1735b52",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "dc7f1b3f-c90e-4e9a-93e8-aa08e5149685",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "vpnvculwx3rVOpPs",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Lookup Manager and Lead').item.json.ManagerEmail }}, {{ $('Lookup Manager and Lead').item.json.LeadEmail }}",
+        "subject": "=New Team Member Joining: {{ $('Validate Employee Data').item.json.employeeName }}",
+        "message": "=<div style=\"font-family: Arial, sans-serif; color: #333333; max-width: 600px; margin: 0 auto; padding: 20px;\">\n  <div style=\"border-bottom: 2px solid #2c3e50; padding-bottom: 15px; margin-bottom: 20px;\">\n    <h2 style=\"color: #2c3e50; margin: 0;\">DeepVision.ai</h2>\n  </div>\n\n  <p>Hi,</p>\n\n  <p>This is to inform you that <strong>{{ $('Validate Employee Data').item.json.employeeName }}</strong> will be joining the <strong>{{ $('Validate Employee Data').item.json.department }}</strong> team, effective <strong>{{ $('Validate Employee Data').item.json.startDate }}</strong>.</p>\n\n  <p>Their onboarding document has been shared with them via Google Drive, and a copy has also been shared with you for reference.</p>\n\n  <p>We kindly request you to reach out and welcome them, and to help coordinate their first day.</p>\n\n  <p style=\"margin-top: 30px;\">\n    Best regards,<br>\n    <strong>DeepVision.ai HR Automation</strong>\n  </p>\n\n  <div style=\"border-top: 1px solid #e0e0e0; margin-top: 30px; padding-top: 15px; font-size: 12px; color: #888888;\">\n    <p>DeepVision.ai — Powering Tomorrow with Intelligence</p>\n  </div>\n</div>",
+        "options": {}
+      },
+      "id": "5fb4c079-de45-45de-898b-32d28250f996",
+      "name": "Notify Manager and Lead",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "967d0956-4a24-4bdb-8370-d7a6e2dc1191",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "vpnvculwx3rVOpPs",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg",
+          "mode": "list",
+          "cachedResultName": "Employee Onboarding Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "Onboarded",
+            "ProcessedAt": "={{ $now.toISO() }}",
+            "Email": "={{ $('Validate Employee Data').item.json.employeeEmail }}"
+          },
+          "matchingColumns": [
+            "Email"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Department",
+              "displayName": "Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ManagerEmail",
+              "displayName": "ManagerEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "LeadEmail",
+              "displayName": "LeadEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "StartDate",
+              "displayName": "StartDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ProcessedAt",
+              "displayName": "ProcessedAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "8b667f03-3de1-4d77-8b11-f99bf0abd6e7",
+      "name": "Mark Row as Onboarded",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1328,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "5FozDjaGmUDBSEwW",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect error details from whichever node failed (error output)\nconst item = $input.item.json;\nconst errorMsg = item.error?.message || item.message || 'Unknown error occurred';\nconst nodeName = $input.item.json.node || $node.name;\n\nreturn {\n  json: {\n    failedNode: nodeName,\n    errorMessage: errorMsg,\n    employeeName: $('Validate Employee Data').item.json.employeeName || 'Unknown',\n    employeeEmail: $('Validate Employee Data').item.json.employeeEmail || 'Unknown',\n    rowNumber: $('Validate Employee Data').item.json.rowNumber || 'Unknown',\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "38edaba0-470f-479b-b03c-77eff00f2754",
+      "name": "Format Error Details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "=uw-21-ai-bs-042@student.uow.edu.pk",
+        "subject": "=Action Required: Onboarding Process Failed for {{ $json.employeeName }}",
+        "message": "=<div style=\"font-family: Arial, sans-serif; color: #333333; max-width: 600px; margin: 0 auto; padding: 20px;\">\n  <div style=\"border-bottom: 2px solid #c0392b; padding-bottom: 15px; margin-bottom: 20px;\">\n    <h2 style=\"color: #2c3e50; margin: 0;\">DeepVision.ai</h2>\n    <p style=\"color: #c0392b; margin: 5px 0 0 0; font-weight: bold;\">Onboarding Alert</p>\n  </div>\n\n  <p>Hi HR/IT Team,</p>\n\n  <p>The onboarding automation encountered an error while processing a new employee. Manual follow-up is required to complete the remaining steps.</p>\n\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #e0e0e0; font-weight: bold; width: 140px;\">Employee</td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #e0e0e0;\">{{ $json.employeeName }} ({{ $json.employeeEmail }})</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #e0e0e0; font-weight: bold;\">Row Number</td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #e0e0e0;\">{{ $json.rowNumber }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #e0e0e0; font-weight: bold;\">Failed Step</td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #e0e0e0;\">{{ $json.failedNode }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #e0e0e0; font-weight: bold;\">Error Details</td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #e0e0e0;\">{{ $json.errorMessage }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; font-weight: bold;\">Time</td>\n      <td style=\"padding: 8px;\">{{ $json.timestamp }}</td>\n    </tr>\n  </table>\n\n  <p>Please review the execution log in n8n and manually complete the remaining onboarding steps for this employee.</p>\n\n  <p style=\"margin-top: 30px;\">\n    Best regards,<br>\n    <strong>DeepVision.ai HR Automation</strong>\n  </p>\n\n  <div style=\"border-top: 1px solid #e0e0e0; margin-top: 30px; padding-top: 15px; font-size: 12px; color: #888888;\">\n    <p>DeepVision.ai — Powering Tomorrow with Intelligence</p>\n  </div>\n</div>",
+        "options": {}
+      },
+      "id": "d43369ee-0b79-41ec-816e-2b4db4787ce3",
+      "name": "Alert HR - Processing Failed",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        672,
+        448
+      ],
+      "webhookId": "9ca1d1db-e5b4-438c-94e8-8e676160ce6a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "vpnvculwx3rVOpPs",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg",
+          "mode": "list",
+          "cachedResultName": "Employee Onboarding Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email": "={{ $json.employeeEmail }}",
+            "Status": "Failed - See HR Alert Email"
+          },
+          "matchingColumns": [
+            "Email"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Department",
+              "displayName": "Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ManagerEmail",
+              "displayName": "ManagerEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "LeadEmail",
+              "displayName": "LeadEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "StartDate",
+              "displayName": "StartDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ProcessedAt",
+              "displayName": "ProcessedAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "ab1cf251-61de-4bf7-9664-8b6e03456a72",
+      "name": "Mark Row as Failed",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        896,
+        448
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "5FozDjaGmUDBSEwW",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg",
+          "mode": "list",
+          "cachedResultName": "Employee Onboarding Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 728813526,
+          "mode": "list",
+          "cachedResultName": "Department_Managers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10BUSDptsDGpYpnFOnLpe5VDSNv7QvP5lFYf3XXGbPSg/edit#gid=728813526"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Department",
+              "lookupValue": "={{ $json.department }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        48,
+        112
+      ],
+      "id": "1fdf0324-d622-4958-961a-0769fae8ce48",
+      "name": "Lookup Manager and Lead",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "5FozDjaGmUDBSEwW",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Employee Added (Google Sheets Trigger)": {
+      "main": [
+        [
+          {
+            "node": "Validate Employee Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Employee Data": {
+      "main": [
+        [
+          {
+            "node": "Is Data Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Data Valid?": {
+      "main": [
+        [
+          {
+            "node": "Lookup Manager and Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert HR - Invalid Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert HR - Invalid Data": {
+      "main": [
+        [
+          {
+            "node": "Mark Row as Invalid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Copy Onboarding Doc": {
+      "main": [
+        [
+          {
+            "node": "Share Doc with Employee",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Error Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Share Doc with Employee": {
+      "main": [
+        [
+          {
+            "node": "Share Doc with Manager",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Error Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Share Doc with Manager": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Error Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Welcome Email": {
+      "main": [
+        [
+          {
+            "node": "Notify Manager and Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Error Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Manager and Lead": {
+      "main": [
+        [
+          {
+            "node": "Mark Row as Onboarded",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Error Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error Details": {
+      "main": [
+        [
+          {
+            "node": "Alert HR - Processing Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert HR - Processing Failed": {
+      "main": [
+        [
+          {
+            "node": "Mark Row as Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Manager and Lead": {
+      "main": [
+        [
+          {
+            "node": "Copy Onboarding Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "17a51711-8ecb-40ae-9a2b-d379e0c1b06c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7de15eff0a77af0451c1d443825ed6a1b5479d2a3a690ca63d0b117ed82bcfb1"
+  },
+  "nodeGroups": [],
+  "id": "Qi15jfYm6Or1Somb",
+  "tags": []
+}

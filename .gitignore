@@ -1,0 +1,7 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# n8n local exports/credentials (never commit real credentials)
+*.credentials.json
+.env
